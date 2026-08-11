@@ -70,6 +70,7 @@ phenix-scorch-component-vmstats = "phenix_apps.apps.scorch.vmstats.vmstats:main"
 phenix-scorch-component-opcexport = "phenix_apps.apps.scorch.opcexport.opcexport:main"
 phenix-scorch-component-kafka = "phenix_apps.apps.scorch.kafka.kafka_component:main"
 phenix-scorch-component-erspan = "phenix_apps.apps.scorch.erspan.erspan:main"
+phenix-scorch-component-aggregator = "phenix_apps.apps.scorch.aggregator.aggregator:main"
 phenix-scorch-component-ssh = "phenix_apps.apps.scorch.ssh.ssh:main"
 
 [project.entry-points."phenix.scale.plugins"]
