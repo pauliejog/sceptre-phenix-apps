@@ -26,33 +26,55 @@ metadata:
     configure:
       file_structure:
         - <string> # (OPTIONAL) Relative directory path under the remote base directory
-      cmds:
-        - <string>
-      upload:
-        - <string>
-      download:
-        - <string>
+      actions:
+        - type: mkdirs # create the remote directory tree under the component base
+          paths:
+            - <string>
+        - type: cmd
+          cmd: <string>
+        - type: upload
+          value: <string> # local[:remote]
+        - type: download
+          value: <string> # remote[:local]
+        - type: write_stage_timestamp
+          path: <string> # YAML file to update (relative paths resolve under the component output dir)
+          key: <string> # YAML key to update; nested keys use dot notation, like experiment.start
+        - type: write_experiment_time
+          path: <string> # Writes experiment_start/experiment_stop with zulu/local timestamps
     start:
-      cmds:
-        - <string>
-      upload:
-        - <string>
-      download:
-        - <string>
+      actions:
+        - type: cmd
+          cmd: <string>
+        - type: upload
+          value: <string>
+        - type: download
+          value: <string>
+        - type: write_stage_timestamp
+          path: <string>
+          key: <string>
+        - type: write_experiment_time
+          path: <string>
     stop:
-      cmds:
-        - <string>
-      upload:
-        - <string>
-      download:
-        - <string>
+      actions:
+        - type: cmd
+          cmd: <string>
+        - type: upload
+          value: <string>
+        - type: download
+          value: <string>
+        - type: write_stage_timestamp
+          path: <string>
+          key: <string>
+        - type: write_experiment_time
+          path: <string>
     cleanup:
-      cmds:
-        - <string>
-      upload:
-        - <string>
-      download:
-        - <string>
+      actions:
+        - type: cmd
+          cmd: <string>
+        - type: upload
+          value: <string>
+        - type: download
+          value: <string>
 
   # Optional defaults applied to every stage unless overridden above.
   cmds:
@@ -62,6 +84,21 @@ metadata:
   download:
     - <string>
 ```
+
+Legacy `cmds`, `upload`, and `download` entries still work. `actions` lets you mix
+different stage-specific types in one place.
+
+## Action Types
+
+- `mkdirs`: creates remote directories under the experiment base directory during
+  `configure`.
+- `cmd`: runs a shell command on the aggregation server.
+- `upload`: copies a local file or directory to the remote host.
+- `download`: copies a remote file or directory back to the local Scorch output.
+- `write_stage_timestamp`: writes a timestamp into a YAML mapping at the given key.
+  Use dotted keys like `experiment.start` to build nested YAML.
+- `write_experiment_time`: writes the script-style `experiment_time.yaml` file with
+  `experiment_start` and `experiment_stop`, including `zulu` and `local` timestamps.
 
 ## Transfer Syntax
 
@@ -79,6 +116,12 @@ Relative paths are resolved against the corresponding default directory.
 
 The `configure` stage creates the remote base directory and any relative
 directories listed in `stages.configure.file_structure`.
+
+If you use `type: write_stage_timestamp`, the component writes or updates the YAML
+file with the current stage timestamp. If you want the experiment timing file from
+your script, use `type: write_experiment_time` in `start` and `stop`; it writes
+`experiment_start` and `experiment_stop` with `zulu` and `local` timestamps and
+enforces the same one-time rules.
 
 The component maps:
 
@@ -100,19 +143,27 @@ components:
       remote_base_dir: /var/lib/scorch-aggregation
       stages:
         configure:
-          file_structure:
-            - pcap
-            - peat/pre
-            - peat/post
-            - syslogsync
+          actions:
+            - type: mkdirs
+              paths:
+                - pcap
+                - peat/pre
+                - peat/post
+                - syslogsync
         start:
-          cmds:
-            - mkdir -p /var/lib/scorch-aggregation/incoming
-          upload:
-            - /phenix/images/experiment/files/scorch/run-0/collector:/var/lib/scorch-aggregation/incoming/collector
+          actions:
+            - type: cmd
+              cmd: mkdir -p /var/lib/scorch-aggregation/incoming
+            - type: upload
+              value: /phenix/images/experiment/files/scorch/run-0/collector:/var/lib/scorch-aggregation/incoming/collector
+            - type: write_experiment_time
+              path: experiment_time.yaml
         stop:
-          cmds:
-            - /opt/shipper/bin/ship --config /etc/shipper.yml
-          download:
-            - /var/lib/scorch-aggregation/manifests/latest.json
+          actions:
+            - type: cmd
+              cmd: /opt/shipper/bin/ship --config /etc/shipper.yml
+            - type: download
+              value: /var/lib/scorch-aggregation/manifests/latest.json
+            - type: write_experiment_time
+              path: experiment_time.yaml
 ```
